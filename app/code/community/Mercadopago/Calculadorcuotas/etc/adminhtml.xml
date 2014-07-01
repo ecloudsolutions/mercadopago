@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<config>
+    <menu>
+       <calculadorcuotas translate="title" module="calculadorcuotas">
+           <sort_order>150</sort_order>
+            <title>Calculador de cuotas</title>
+             <children>
+                <example translate="title" module="calculadorcuotas">
+                    <title>Configuracion</title>
+                    <sort_order>1</sort_order>
+                    <action>adminhtml/system_config/edit/section/calculadorconfig</action>
+                </example>
+            </children>
+       </calculadorcuotas>
+   </menu>
+   <acl>
+    <resources>
+      <admin>
+        <children>
+          <system>
+            <children>
+            <config>
+              <children>
+                  <calculadorconfig translate="title" module="calculadorcuotas">
+                  <title>Custom Configuration</title>
+                  <sort_order>100</sort_order>
+                  </calculadorconfig>
+              </children>
+            </config>
+          </children>
+          </system>
+        </children>
+      </admin>
+    </resources>
+    </acl>
+</config>

@@ -1,0 +1,258 @@
+<?php
+/**
+ * @version   1.0 20.02.2014
+ * @author    ecloud solutions http://www.ecloudsolutions.com <info@ecloudsolutions.com>
+ * @copyright Copyright (C) 2010 - 2014 ecloud solutions ®
+ */
+?>
+<a href="#calculador-main" class="link" id="link-calculador"><?php echo $this->__('Calculá tu Cuota'); ?></a>
+<div style="display:none;">
+	<div class="calculador-main" id="calculador-main">
+	<div class="container">
+		<div class="greybackground">
+			<div class="firstrow">
+				<div class="pesosicon">
+				<span class="title">Calculá tu cuota</span>
+				</div>
+			</div>
+			<div class="h2title"><span>Mercado Pago</span></div>
+		</div>
+		<div class="row one">
+			<div class="title precio-producto"><span class="h3title">Precio: <span class="precio-prod"></span></span></div>
+			<div class="div-tarjetas">
+				<div class="title"><span class="h3title">Tarjetas de Crédito</span></div>
+				<span class="medios"></span>
+				<select id="tarjeta"><option value="-1">Seleccioná tu tarjeta...</option></select>
+			</div>
+			<div class="div-otros-medios">
+				<div class="title"><span class="h3title">Otros medios</span></div>
+				<span class="medios"></span>
+				<select id="otros-medios"><option value="-1">Seleccioná otro medio de pago...</option></select>
+			</div>
+		</div>
+		<div class="row two" style="display:none;">
+			<div class="div-bancos">
+				<div class="title"><span class="h3title">Bancos</span></div>
+				<select id="bancos"><option>Seleccione su banco...</option></select>
+			</div>
+		</div>
+		<div class="row three">
+			<div class="div-cuotas">
+				<div class="title"><span class="h3title">Cuotas</span></div>
+				<div class="select-cuotas">
+					<select id="cuotas"><option>Seleccioná la cantidad de cuotas...</option></select>
+				</div>
+			</div>
+		</div>
+		
+		<div class="lastrow">
+
+		<div class="result">
+			<span class="label">Pagas: </span>
+			<div class="precio">
+			<div id="cantidad-cuotas"></div>
+			<div class="precio-cuota"></div>
+			</div>
+		</div>
+		</div>
+		<div class="foot-text">
+			<span class="row1"><span class="bold">Costos de envío:</span> Los costos de envío no están incluidos  en el cálculo de cuotas.</span> 
+			<span class="row2">Para conocer el costo de envío debes agregar el producto al carrito.</span>
+		</div>
+	</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+	jQuery.noConflict();
+	/* Carga los metodos de pagos */
+	jQuery(document).ready(function(){
+		jQuery.ajax({ 
+	        type: "GET",
+	        dataType: "json",
+	        url: "https://api.mercadolibre.com/sites/MLA/payment_methods/",
+	        success: function(data){
+				jQuery.each(data,function(i,payment){
+		        	if (payment.payment_type_id == "credit_card") {
+		        		jQuery( "#tarjeta" ).append(jQuery('<option>').text(payment.name).attr('value', payment.id));
+		        	} else {
+		        		jQuery( "#otros-medios" ).append(jQuery('<option>').text(payment.name).attr('value', payment.id));
+		        	}
+		        });
+	        }
+	    });
+		//jQuery('.precio-cuota').text(getPrice());
+	});
+
+	function getPrice(cantidad,interes){
+		price 	= jQuery('.product-shop .product-type-data .price-box .price').last().html().trim();
+		price 	= price.replace(/<sup>.*<\/sup>/gi, "");
+		price 	= price.substr(7);
+		price 	= price.replace(".", "");
+		if (!(price.indexOf(",") >= 0)){
+			price 	= price + "," + jQuery('.product-shop .product-type-data .price-box .price sup').last().text();
+		}
+		
+
+
+		if(cantidad) {
+			if (cantidad != "1") {
+			interesTotal = parseFloat(price) * parseFloat(interes);
+			price = parseFloat(price) + parseFloat(interesTotal);
+			price = price / cantidad;
+			price = Math.round(price * 100) / 100;
+			price = price.toFixed(2);
+			price = price.toString();
+			price = price.replace(".", ",");
+
+			};
+		}
+
+		return price;
+	}
+
+	/* Carga los bancos si ha seleccionado una tarjeta que tenga bancos */
+	jQuery("#tarjeta").change(function(){ 
+	    var param = jQuery('#tarjeta').val();
+	    jQuery('#otros-medios').prop('selectedIndex',0);
+	    jQuery("#cuotas").find('option').remove();
+	    jQuery( "#cantidad-cuotas" ).html("");
+		jQuery( ".precio-cuota" ).html("");
+
+	    jQuery.ajax({ 
+	        type: "GET",
+	        dataType: "json",
+	        url: "https://api.mercadolibre.com/sites/MLA/payment_methods/" + param,
+	        success: function(data){ 
+		        jQuery("#bancos").find('option').remove();
+		        jQuery(".div-cuotas").fadeIn();
+		        if (data.exceptions_by_card_issuer.length > 0) {
+		        	jQuery("#bancos").append(jQuery('<option>').text("Selecciona tu Banco"));
+					jQuery.each(data.exceptions_by_card_issuer,function(i,card) {
+		        		bancos = card.card_issuer;
+		        		jQuery("#bancos").append(jQuery('<option>').text(bancos.name).attr('value', bancos.id));
+			        });
+			        jQuery("#bancos").append(jQuery('<option value="310">Banco Santander Rio</option>'));
+		        	jQuery("#bancos").append(jQuery('<option value="316">Banco Frances</option>'));
+		        	jQuery("#bancos").append(jQuery('<option value="279">Banco Galicia</option>'));
+		        	jQuery("#bancos").append(jQuery('<option value="1">Otro</option>'));
+			        jQuery(".row.two").fadeIn();
+
+			    } else {
+	        		jQuery.each(data.payer_costs,function(i,cuotas) {
+	        			jQuery( "#cuotas" ).append(jQuery('<option>').text(cuotas.installments).attr('value', cuotas.installment_rate));
+	        			jQuery(".row.two").fadeOut();
+	        			jQuery("#cuotas").change();
+	        		});
+	        	}
+	        }
+	    });
+	});
+
+	/* Carga las cuotas si ha seleccionado otros medios de pagos */
+	jQuery("#otros-medios").change(function(){ 
+	    var param = jQuery('#otros-medios').val();
+	    jQuery('#tarjeta').prop('selectedIndex',0);
+	   	jQuery( "#cantidad-cuotas" ).html("");
+		jQuery( ".precio-cuota" ).html("");
+	    jQuery("#cuotas").find('option').remove();
+	    //jQuery("#cuotas").append(jQuery('<option>').text("Seleccioná la cantidad de cuotas..."));
+	    jQuery("#bancos").find('option').remove();
+	    jQuery(".row.two").fadeOut();
+
+	    jQuery.ajax({ 
+	        type: "GET",
+	        dataType: "json",
+	        url: "https://api.mercadolibre.com/sites/MLA/payment_methods/" + param,
+	        success: function(data){ 
+	        	if(data.payer_costs.length == 1){
+	        		jQuery(".div-cuotas").fadeOut();
+	        		jQuery.each(data.payer_costs,function(i,cuotas) {
+	        			jQuery( "#cuotas" ).append(jQuery('<option>').text(cuotas.installments).attr('value', cuotas.installment_rate));
+	        			jQuery("#cuotas").change();
+	        		});
+	        	}else{
+	        		jQuery(".div-cuotas").fadeIn();
+	        		jQuery.each(data.payer_costs,function(i,cuotas) {
+	        			jQuery( "#cuotas" ).append(jQuery('<option>').text(cuotas.installments).attr('value', cuotas.installment_rate));
+	        			jQuery("#cuotas").change();
+	        		});
+	        	}
+	        }
+	    });
+	});
+
+	jQuery("#bancos").change(function(){
+		jQuery("#cuotas").find('option').remove();
+		jQuery( "#cantidad-cuotas" ).html("");
+
+		jQuery( ".precio-cuota" ).html("");
+	    var param = jQuery('#tarjeta').val();
+	    var bancoid = jQuery('#bancos').val();
+
+	    jQuery.ajax({ 
+	        type: "GET",
+	        dataType: "json",
+	        url: "https://api.mercadolibre.com/sites/MLA/payment_methods/" + param,
+	        success: function(data){ 
+		        jQuery("#cuotas").find('option').remove();      
+				jQuery.each(data.exceptions_by_card_issuer,function(i,card){
+					if (bancoid == card.card_issuer.id) {
+						//jQuery("#cuotas").append(jQuery('<option>').text("Seleccioná la cantidad de cuotas..."));
+						jQuery.each(card.payer_costs,function(i,bank){
+			        		cuotas = bank.payer_costs;
+			        		jQuery( "#cuotas" ).append(jQuery('<option>').text(bank.installments).attr('value', bank.installment_rate));
+			        		jQuery("#cuotas").change();
+		        		});
+
+		        	};
+		        });
+		        if(bancoid == 310 || bancoid == 316 || bancoid == 279 || bancoid == 1){
+		        		jQuery( "#cuotas" ).append(jQuery('<option value="0">1</option>'));
+		        		jQuery( "#cuotas" ).append(jQuery('<option value="16.59">3</option>'));
+		        		jQuery( "#cuotas" ).append(jQuery('<option value="26.99">6</option>'));
+		        		jQuery( "#cuotas" ).append(jQuery('<option value="42.69">9</option>'));
+		        		jQuery( "#cuotas" ).append(jQuery('<option value="52.99">12</option>'));
+		        		jQuery("#cuotas").change();
+		        }
+	        }
+	    });
+	});
+
+	jQuery("#cuotas").change(function(){
+		jQuery( "#cantidad-cuotas" ).html("");
+		jQuery( ".precio-cuota" ).html("");
+
+		cantidad 		= jQuery("#cuotas option:selected").html();
+		interes			= jQuery(this).val() / 100;
+		cuotasPrice 	= getPrice(cantidad,interes);
+	
+
+		jQuery( "#cantidad-cuotas" ).append(cantidad + " cuota/s ");
+		if (interes == 0) {
+			jQuery( "#cantidad-cuotas" ).append(" sin interés ");
+		};
+		jQuery( ".precio-cuota" ).append(" de $" + cuotasPrice);
+	
+	});
+
+</script>
+<script type="text/javascript">
+						jQuery("a#link-calculador").click(function(){
+							jQuery('.precio-prod').html(jQuery('.product-shop .product-type-data .price-box .price').last().html().trim().replace("&nbsp;"," ").replace("&nbsp;"," "));
+							jQuery('#otros-medios>option:eq(0)').attr('selected', true);
+							jQuery('#tarjeta>option:eq(0)').attr('selected', true);
+							jQuery("#otros-medios").change();
+							jQuery("#tarjeta").change();
+						});
+                       	jQuery("a#link-calculador").fancybox({
+							'href' : '#calculador-main',
+							'titleShow' : false,
+							'transitionIn' : 'elastic',
+							'transitionOut' : 'elastic'
+						});
+						jQuery("a#link-calculador").click(function(){
+							jQuery(".row.two").fadeOut();
+						});
+
+</script>
